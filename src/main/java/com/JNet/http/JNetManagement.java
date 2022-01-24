@@ -4,10 +4,10 @@ import org.jdom.Document;
 import org.jdom.input.SAXBuilder;
 
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class JNetManagement {
 
@@ -17,7 +17,7 @@ public class JNetManagement {
     private static volatile JNetManagement jNetManagement;
 
     private JNetManagement() {
-        this.httpSessions = new HashMap<>();
+        this.httpSessions = new ConcurrentHashMap<>();
         try {
             SAXBuilder builder = new SAXBuilder();
             InputStream inputStream = JNetManagement.class.getClassLoader().getResourceAsStream("jnet.xml");

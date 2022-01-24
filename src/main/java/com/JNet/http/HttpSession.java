@@ -1,7 +1,7 @@
 package com.JNet.http;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HttpSession {
 
@@ -18,7 +18,7 @@ public class HttpSession {
 
     public HttpSession(String sessionId) {
         this.sessionId = sessionId;
-        this.attributes = new HashMap<>();
+        this.attributes = new ConcurrentHashMap<>();
     }
 
     public Object getAttribute(String name) {

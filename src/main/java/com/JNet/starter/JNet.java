@@ -26,7 +26,6 @@ public class JNet {
     private Map<String, Route> routers;
     private int maxReadable;
     private InterceptorRegistry registry;
-    int count = 0;
 
     private JNet(int xml) {
         SAXBuilder builder = new SAXBuilder();
@@ -185,12 +184,11 @@ public class JNet {
                         JNetManagement jNetManagement = JNetManagement.getInstance();
                         HttpSession httpSession = null;
                         if (cookie != null && !cookie.isEmpty()) {
-                            String sessionId = cookie.split("=")[1];
+                            String sessionId = cookie.split("=")[1].replace("\r", "");
                             httpSession = jNetManagement.getSession(sessionId);
                         }
                         if (httpSession == null) {
-                            String sessionId = String.valueOf(count);
-                            count++;
+                            String sessionId = UUID.randomUUID().toString().replace("-", "");
                             httpSession = new HttpSession(sessionId);
                             jNetManagement.setSession(sessionId, httpSession);
                         }
