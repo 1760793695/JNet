@@ -21,7 +21,7 @@ public class InterceptorRegistry {
 
     public boolean doInterceptor(String uri, HttpRequest httpRequest) {
         List<Interceptor> chain = this.interceptors.get(uri);
-        if (chain != null) {
+        if (chain != null && chain.size() > 0) {
             for (Interceptor interceptor : chain) {
                 boolean result = interceptor.preHandler(httpRequest);
                 if (!result) {

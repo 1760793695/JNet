@@ -26,12 +26,13 @@ public class JNet {
     private Map<String, Route> routers;
     private int maxReadable;
     private InterceptorRegistry registry;
+    int count = 0;
 
     private JNet(int xml) {
         SAXBuilder builder = new SAXBuilder();
         try {
-            InputStream is = new FileInputStream("src/main/resources/jnet.xml");
-            Document document = builder.build(is);
+            InputStream inputStream = JNet.class.getClassLoader().getResourceAsStream("jnet.xml");
+            Document document = builder.build(inputStream);
             Integer readable = parseReadable(document);
             if (readable == 0) {
                 this.maxReadable = 1024;
@@ -161,6 +162,9 @@ public class JNet {
                 while (iterator.hasNext()) {
                     SelectionKey key = iterator.next();
                     iterator.remove();
+                    if (!key.isValid()) {
+                        continue;
+                    }
                     if (key.isAcceptable()) {
                         SocketChannel socketChannel = serverSocketChannel.accept();
                         if (socketChannel != null) {
@@ -172,12 +176,30 @@ public class JNet {
                         ByteBuffer buffer = ByteBuffer.allocate(this.maxReadable);
                         channel.read(buffer);
                         String request = new String(buffer.array(), StandardCharsets.UTF_8);
+                        if (getUri(request).equals("/favicon.ico")) {
+                            continue;
+                        }
                         buffer.clear();
+                        Map<String, String> headers = getHeaders(request);
+                        String cookie = headers.get("Cookie");
+                        JNetManagement jNetManagement = JNetManagement.getInstance();
+                        HttpSession httpSession = null;
+                        if (cookie != null && !cookie.isEmpty()) {
+                            String sessionId = cookie.split("=")[1];
+                            httpSession = jNetManagement.getSession(sessionId);
+                        }
+                        if (httpSession == null) {
+                            String sessionId = String.valueOf(count);
+                            count++;
+                            httpSession = new HttpSession(sessionId);
+                            jNetManagement.setSession(sessionId, httpSession);
+                        }
                         HttpResponse httpResponse = HttpResponse.builder().responseLine("HTTP/1.1 200 OK").build();
                         switch (getMethod(request)) {
                             case "GET":
                                 boolean getResult = true;
                                 HttpRequest getRequest = processGetRequest(request);
+                                getRequest.setSession(httpSession);
                                 if (this.registry != null) {
                                     getResult = registry.doInterceptor(getRequest.uri(), getRequest);
                                 }
@@ -200,6 +222,7 @@ public class JNet {
                             case "POST":
                                 boolean postResult = true;
                                 HttpRequest postRequest = processPostRequest(request);
+                                postRequest.setSession(httpSession);
                                 if (this.registry != null) {
                                     postResult = registry.doInterceptor(postRequest.uri(), postRequest);
                                 }

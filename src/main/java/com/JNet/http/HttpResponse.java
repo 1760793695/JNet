@@ -12,7 +12,7 @@ public class HttpResponse {
     private HttpCookie cookie;
 
     public HttpCookie getCookie() {
-        return cookie;
+        return this.cookie;
     }
 
     public void setCookie(HttpCookie cookie) {

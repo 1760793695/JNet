@@ -13,12 +13,12 @@
 <!--        <!ATTLIST route path CDATA #REQUIRED>-->
 <!--        <!ATTLIST route listenerClass CDATA #REQUIRED>-->
 <!--        ]>-->
-<JNet maxReadable="1024">
+<JNet maxReadable="2048">
     <interceptors>
-        <interceptor path="/user/login" class="com.JNet.interceptor.Interceptor"/>
+        <interceptor path="/favicon.ico" class="com.SimpleInterceptor"/>
     </interceptors>
     <routers>
-        <route method="GET" path="/user/login" listenerClass="com.JNet.interceptor.Interceptor"/>
+        <route method="GET" path="/user/login" listenerClass="com.SimpleListener"/>
     </routers>
 
     <mysql>
@@ -31,10 +31,10 @@
     </mysql>
 
     <httpSession>
-        <timeout>1</timeout>
+        <timeout>30</timeout>
     </httpSession>
 
     <cookie>
-        <timeout>1</timeout>
+        <timeout>30</timeout>
     </cookie>
 </JNet>

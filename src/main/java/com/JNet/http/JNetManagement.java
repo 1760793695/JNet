@@ -3,7 +3,6 @@ package com.JNet.http;
 import org.jdom.Document;
 import org.jdom.input.SAXBuilder;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,13 +20,17 @@ public class JNetManagement {
         this.httpSessions = new HashMap<>();
         try {
             SAXBuilder builder = new SAXBuilder();
-            InputStream inputStream = new FileInputStream("src/main/resources/jnet.xml");
+            InputStream inputStream = JNetManagement.class.getClassLoader().getResourceAsStream("jnet.xml");
             Document document = builder.build(inputStream);
             String timeoutString = document.getRootElement().getChild("httpSession").getChild("timeout").getText();
             this.sessionTimeout = Integer.parseInt(timeoutString) * 60 * 1000L;
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public HttpSession getSession(String sessionId) {
+        return httpSessions.get(sessionId);
     }
 
     public void setSession(String sessionId, HttpSession session) {

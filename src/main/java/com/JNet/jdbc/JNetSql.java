@@ -17,8 +17,8 @@ public class JNetSql {
 
     public JNetSql() throws Exception {
         SAXBuilder saxBuilder = new SAXBuilder();
-        InputStream is = new FileInputStream("src/main/resources/jnet.xml");
-        Document document = saxBuilder.build(is);
+        InputStream inputStream = JNetSql.class.getClassLoader().getResourceAsStream("jnet.xml");
+        Document document = saxBuilder.build(inputStream);
         Element mysql = document.getRootElement().getChild("mysql");
         String driverName = mysql.getChild("driver").getAttributeValue("class");
         Class.forName(driverName);
