@@ -3,5 +3,5 @@ package com.JNet.http;
 @FunctionalInterface
 public interface HttpRequestListener {
 
-    String handler(HttpRequest httpRequest);
+    String handler(HttpRequest httpRequest, HttpResponse httpResponse);
 }

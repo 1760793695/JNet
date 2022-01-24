@@ -1,5 +1,7 @@
 package com.JNet.thread;
 
+import com.JNet.http.HttpCookie;
+import com.JNet.http.HttpRequest;
 import com.JNet.http.HttpResponse;
 
 import java.io.IOException;
@@ -14,20 +16,23 @@ import java.util.concurrent.*;
 public class HttpThreadPool {
 
     private static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(2,
-            4, 20, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(100),
+            4, 20, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100),
             Thread::new, (r, executor) -> executor.getQueue().add(r));
 
-    public static void handleResponse(SocketChannel socketChannel, String responseBody) {
-        Map<String, Object> responseHeader = new HashMap<>();
-        responseHeader.put("Date", new Date().toString());
-        responseHeader.put("Content-Length", responseBody.getBytes().length);
-        responseHeader.put("Content-Type", "text/html");
-        HttpResponse response = HttpResponse.builder().responseLine("HTTP/1.1 200 OK\r\n")
-                .responseHeader(responseHeader)
-                .responseBody(responseBody).build();
+    public static void handleResponse(SocketChannel socketChannel, HttpResponse httpResponse, HttpRequest httpRequest, String responseBody) {
+        httpResponse.addHeader("Content-Length", responseBody.getBytes(StandardCharsets.UTF_8).length);
+        httpResponse.addHeader("Date", new Date().toString());
+        httpResponse.addHeader("Content-Type", "text/html");
+        httpResponse.setResponseBody(responseBody);
+        HttpCookie cookie = httpResponse.getCookie();
+        if (cookie != null) {
+            cookie.setDomain(httpRequest.getHeader("Host"));
+            cookie.setPath(httpRequest.uri());
+            httpResponse.addHeader("Set-Cookie", cookie.toString());
+        }
         threadPool.submit(() -> {
             try {
-                socketChannel.write(ByteBuffer.wrap(response.toString().getBytes(StandardCharsets.UTF_8)));
+                socketChannel.write(ByteBuffer.wrap(httpResponse.toString().getBytes(StandardCharsets.UTF_8)));
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {

@@ -1,13 +1,23 @@
 package com.JNet.http;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class HttpResponse {
 
     private String responseLine;
     private Map<String, Object> responseHeader;
-    private String emptyLine = "\r\n";
+    private static final String emptyLine = "\r\n";
     private String responseBody;
+    private HttpCookie cookie;
+
+    public HttpCookie getCookie() {
+        return cookie;
+    }
+
+    public void setCookie(HttpCookie cookie) {
+        this.cookie = cookie;
+    }
 
     @Override
     public String toString() {
@@ -15,11 +25,23 @@ public class HttpResponse {
         responseHeader.forEach((k, v) -> {
             builder.append(k).append(":").append(v).append("\n");
         });
-        return responseLine + builder.toString() + emptyLine + responseBody;
+        return responseLine + "\n" + builder.toString() + emptyLine + responseBody;
     }
 
     private HttpResponse() {
+        this.responseHeader = new HashMap<>();
+    }
 
+    public Map<String, Object> headers() {
+        return this.responseHeader;
+    }
+
+    public void addHeader(String name, Object value) {
+        this.responseHeader.put(name, value);
+    }
+
+    public void setResponseBody(String responseBody) {
+        this.responseBody = responseBody;
     }
 
     public static HttpResponseBuilder builder() {

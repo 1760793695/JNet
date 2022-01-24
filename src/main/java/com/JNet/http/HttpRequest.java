@@ -8,6 +8,15 @@ public class HttpRequest {
     private String method;
     private Map<String, String> parameters;
     private String requestUri;
+    private HttpSession httpSession;
+
+    public HttpSession getSession() {
+        return this.httpSession;
+    }
+
+    public void setSession(HttpSession httpSession) {
+        this.httpSession = httpSession;
+    }
 
     private HttpRequest() {
 

@@ -1,8 +1,6 @@
 package com.JNet.starter;
 
-import com.JNet.http.HttpRequest;
-import com.JNet.http.HttpRequestListener;
-import com.JNet.http.Route;
+import com.JNet.http.*;
 import com.JNet.interceptor.Interceptor;
 import com.JNet.interceptor.InterceptorRegistry;
 import com.JNet.thread.HttpThreadPool;
@@ -20,6 +18,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class JNet {
@@ -172,8 +171,9 @@ public class JNet {
                         SocketChannel channel = (SocketChannel) key.channel();
                         ByteBuffer buffer = ByteBuffer.allocate(this.maxReadable);
                         channel.read(buffer);
-                        String request = new String(buffer.array());
+                        String request = new String(buffer.array(), StandardCharsets.UTF_8);
                         buffer.clear();
+                        HttpResponse httpResponse = HttpResponse.builder().responseLine("HTTP/1.1 200 OK").build();
                         switch (getMethod(request)) {
                             case "GET":
                                 boolean getResult = true;
@@ -184,17 +184,17 @@ public class JNet {
                                 if (getResult) {
                                     Route getRoute = routers.get(getRequest.uri());
                                     if (getRoute == null) {
-                                        HttpThreadPool.handleResponse(channel, "404");
+                                        HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "404");
                                     } else {
                                         if (!"GET".equals(getRoute.getMethod())) {
-                                            HttpThreadPool.handleResponse(channel, "403");
+                                            HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "403");
                                         } else {
-                                            String responseBody = getRoute.getListener().handler(getRequest);
-                                            HttpThreadPool.handleResponse(channel, responseBody);
+                                            String responseBody = getRoute.getListener().handler(getRequest, httpResponse);
+                                            HttpThreadPool.handleResponse(channel, httpResponse, getRequest, responseBody);
                                         }
                                     }
                                 } else {
-                                    HttpThreadPool.handleResponse(channel, "");
+                                    HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "");
                                 }
                                 break;
                             case "POST":
@@ -206,17 +206,17 @@ public class JNet {
                                 if (postResult) {
                                     Route postRoute = routers.get(postRequest.uri());
                                     if (postRoute == null) {
-                                        HttpThreadPool.handleResponse(channel, "404");
+                                        HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "404");
                                     } else {
                                         if (!"POST".equals(postRoute.getMethod())) {
-                                            HttpThreadPool.handleResponse(channel, "403");
+                                            HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "403");
                                         } else {
-                                            String responseBody = postRoute.getListener().handler(postRequest);
-                                            HttpThreadPool.handleResponse(channel, responseBody);
+                                            String responseBody = postRoute.getListener().handler(postRequest, httpResponse);
+                                            HttpThreadPool.handleResponse(channel, httpResponse, postRequest, responseBody);
                                         }
                                     }
                                 } else {
-                                    HttpThreadPool.handleResponse(channel, "");
+                                    HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "");
                                 }
                                 break;
                         }
