@@ -7,12 +7,10 @@ import com.JNet.http.HttpResponse;
 public class SimpleListener implements HttpRequestListener {
     @Override
     public String handler(HttpRequest httpRequest, HttpResponse httpResponse) {
-        if (httpRequest.getSession().getAttribute("name") == null) {
-            System.out.println("session中还没有name这个值");
-            httpRequest.getSession().setAttribute("name", "zhangsan");
-        } else {
-            System.out.println(httpRequest.getSession().getAttribute("name"));
-        }
+        httpRequest.headers().forEach((k, v) -> {
+            System.out.println(k + ":" + v);
+        });
+        System.out.println("------------------------------------------------------------\n\n\n");
         return "hello";
     }
 }

@@ -4,18 +4,50 @@ import org.jdom.Document;
 import org.jdom.Element;
 import org.jdom.input.SAXBuilder;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class JNetSql {
 
     private final Connection connection;
+    private volatile static JNetSql jNetSql;
 
-    public JNetSql() throws Exception {
+    public static JNetSql getInstance() throws Exception {
+        if (jNetSql == null) {
+            synchronized (JNetSql.class) {
+                if (jNetSql == null) {
+                    jNetSql = new JNetSql();
+                }
+            }
+        }
+        return jNetSql;
+    }
+
+    public static JNetSql getInstance(Map<String, String> connectionParams) throws Exception {
+        if (jNetSql == null) {
+            synchronized (JNetSql.class) {
+                if (jNetSql == null) {
+                    jNetSql = new JNetSql(connectionParams);
+                }
+            }
+        }
+        return jNetSql;
+    }
+
+    private JNetSql(Map<String, String> connectionParams) throws Exception {
+        String driver = connectionParams.get("driver");
+        String url = connectionParams.get("url");
+        String username = connectionParams.get("username");
+        String password = connectionParams.get("password");
+        Class.forName(driver);
+        this.connection = DriverManager.getConnection(url, username, password);
+    }
+
+    private JNetSql() throws Exception {
         SAXBuilder saxBuilder = new SAXBuilder();
         InputStream inputStream = JNetSql.class.getClassLoader().getResourceAsStream("jnet.xml");
         Document document = saxBuilder.build(inputStream);
@@ -29,7 +61,7 @@ public class JNetSql {
         this.connection = DriverManager.getConnection(url, username, password);
     }
 
-    public <T> List<T> executeQuery(String sql, Class<T> resultType, Object... params) throws SQLException, InstantiationException, IllegalAccessException {
+    public <T> List<T> selectList(String sql, Class<T> resultType, Object... params) throws SQLException, InstantiationException, IllegalAccessException {
         PreparedStatement statement = this.connection.prepareStatement(sql);
         int position = 1;
         if (params != null && params.length > 1) {
@@ -49,6 +81,26 @@ public class JNetSql {
             result.add(t);
         }
         return result;
+    }
+
+    public <T> T selectOne(String sql, Class<T> resultType, Object... params) throws SQLException, InstantiationException, IllegalAccessException {
+        PreparedStatement statement = this.connection.prepareStatement(sql);
+        int position = 1;
+        if (params != null && params.length > 0) {
+            for (Object param : params) {
+                statement.setObject(position++, param);
+            }
+        }
+        ResultSet resultSet = statement.executeQuery();
+        T t = resultType.newInstance();
+        if (resultSet.next()) {
+            Field[] fields = resultType.getDeclaredFields();
+            for (Field field : fields) {
+                field.setAccessible(true);
+                field.set(t, resultSet.getObject(field.getName()));
+            }
+        }
+        return t;
     }
 
     public boolean executeUpdate(String sql, Object... params) throws SQLException {

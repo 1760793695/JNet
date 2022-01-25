@@ -8,8 +8,6 @@ import org.jdom.Document;
 import org.jdom.Element;
 import org.jdom.input.SAXBuilder;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -172,110 +170,149 @@ public class JNet {
                         }
                     } else if (key.isReadable()) {
                         SocketChannel channel = (SocketChannel) key.channel();
-                        ByteBuffer buffer = ByteBuffer.allocate(this.maxReadable);
-                        channel.read(buffer);
-                        String request = new String(buffer.array(), StandardCharsets.UTF_8);
-                        if (getUri(request).equals("/favicon.ico")) {
-                            continue;
-                        }
-                        buffer.clear();
-                        Map<String, String> headers = getHeaders(request);
-                        String cookie = headers.get("Cookie");
-                        JNetManagement jNetManagement = JNetManagement.getInstance();
-                        HttpSession httpSession = null;
-                        if (cookie != null && !cookie.isEmpty()) {
-                            String sessionId = cookie.split("=")[1].replace("\r", "");
-                            httpSession = jNetManagement.getSession(sessionId);
-                        }
-                        if (httpSession == null) {
-                            String sessionId = UUID.randomUUID().toString().replace("-", "");
-                            httpSession = new HttpSession(sessionId);
-                            jNetManagement.setSession(sessionId, httpSession);
-                        }
-                        HttpResponse httpResponse = HttpResponse.builder().responseLine("HTTP/1.1 200 OK").build();
-                        switch (getMethod(request)) {
-                            case "GET":
-                                boolean getResult = true;
-                                HttpRequest getRequest = processGetRequest(request);
-                                getRequest.setSession(httpSession);
-                                if (this.registry != null) {
-                                    getResult = registry.doInterceptor(getRequest.uri(), getRequest);
-                                }
-                                if (getResult) {
-                                    Route getRoute = routers.get(getRequest.uri());
-                                    if (getRoute == null) {
-                                        HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "404");
-                                    } else {
-                                        if (!"GET".equals(getRoute.getMethod())) {
-                                            HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "403");
-                                        } else {
-                                            String responseBody = getRoute.getListener().handler(getRequest, httpResponse);
-                                            HttpThreadPool.handleResponse(channel, httpResponse, getRequest, responseBody);
-                                        }
-                                    }
-                                } else {
-                                    HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "");
-                                }
-                                break;
-                            case "POST":
-                                boolean postResult = true;
-                                HttpRequest postRequest = processPostRequest(request);
-                                postRequest.setSession(httpSession);
-                                if (this.registry != null) {
-                                    postResult = registry.doInterceptor(postRequest.uri(), postRequest);
-                                }
-                                if (postResult) {
-                                    Route postRoute = routers.get(postRequest.uri());
-                                    if (postRoute == null) {
-                                        HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "404");
-                                    } else {
-                                        if (!"POST".equals(postRoute.getMethod())) {
-                                            HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "403");
-                                        } else {
-                                            String responseBody = postRoute.getListener().handler(postRequest, httpResponse);
-                                            HttpThreadPool.handleResponse(channel, httpResponse, postRequest, responseBody);
-                                        }
-                                    }
-                                } else {
-                                    HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "");
-                                }
-                                break;
-                        }
+                        String request = readRequest(channel);
+                        HttpSession httpSession = checkCookie(request);
+                        handleRequest(httpSession, request, channel);
                     }
                 }
             }
         }
     }
 
+    private void handleRequest(HttpSession httpSession, String request, SocketChannel channel) {
+        HttpResponse httpResponse = HttpResponse.builder().responseLine("HTTP/1.1 200 OK").build();
+        switch (getMethod(request)) {
+            case "GET":
+                boolean getResult = true;
+                HttpRequest getRequest = processGetRequest(request);
+                getRequest.setSession(httpSession);
+                if (this.registry != null) {
+                    getResult = registry.doInterceptor(getRequest.uri(), getRequest);
+                }
+                if (getResult) {
+                    Route getRoute = routers.get(getRequest.uri());
+                    if (getRoute == null) {
+                        HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "404");
+                    } else {
+                        if (!"GET".equals(getRoute.getMethod())) {
+                            HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "403");
+                        } else {
+                            String responseBody = getRoute.getListener().handler(getRequest, httpResponse);
+                            HttpThreadPool.handleResponse(channel, httpResponse, getRequest, responseBody);
+                        }
+                    }
+                } else {
+                    HttpThreadPool.handleResponse(channel, httpResponse, getRequest, "");
+                }
+                break;
+            case "POST":
+                boolean postResult = true;
+                HttpRequest postRequest = processPostRequest(request);
+                postRequest.setSession(httpSession);
+                if (this.registry != null) {
+                    postResult = registry.doInterceptor(postRequest.uri(), postRequest);
+                }
+                if (postResult) {
+                    Route postRoute = routers.get(postRequest.uri());
+                    if (postRoute == null) {
+                        HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "404");
+                    } else {
+                        if (!"POST".equals(postRoute.getMethod())) {
+                            HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "403");
+                        } else {
+                            String responseBody = postRoute.getListener().handler(postRequest, httpResponse);
+                            HttpThreadPool.handleResponse(channel, httpResponse, postRequest, responseBody);
+                        }
+                    }
+                } else {
+                    HttpThreadPool.handleResponse(channel, httpResponse, postRequest, "");
+                }
+                break;
+        }
+    }
+
+    private HttpSession checkCookie(String request) {
+        Map<String, String> headers = getHeaders(request);
+        String cookie = headers.get("Cookie");
+        JNetManagement jNetManagement = JNetManagement.getInstance();
+        HttpSession httpSession = null;
+        if (cookie != null && cookie.contains("sessionId")) {
+            String sessionId = cookie.split("=")[1];
+            httpSession = jNetManagement.getSession(sessionId);
+        }
+        if (httpSession == null) {
+            String sessionId = UUID.randomUUID().toString().replace("-", "");
+            httpSession = new HttpSession(sessionId);
+            jNetManagement.setSession(sessionId, httpSession);
+        }
+        return httpSession;
+    }
+
+    private String readRequest(SocketChannel channel) {
+        StringBuilder request = new StringBuilder();
+        try {
+            ByteBuffer buffer = ByteBuffer.allocate(this.maxReadable);
+            while (channel.read(buffer) > 0) {
+                buffer.flip();
+                byte[] read = new byte[buffer.limit()];
+                buffer.get(read);
+                request.append(new String(read, StandardCharsets.UTF_8));
+            }
+            buffer.clear();
+            return request.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
 
     private HttpRequest processGetRequest(String read) {
         HttpRequest.HttpRequestBuilder builder = HttpRequest.builder().method(getMethod(read));
-        builder.parameters(getParameters(read));
-        builder.requestUri(getUri(read));
-        builder.headers(getHeaders(read));
+        String lineAndHeaders = read.split("\r\n\r\n")[0];
+        builder.requestUri(getUri(lineAndHeaders));
+        builder.headers(getHeaders(lineAndHeaders));
+        builder.parameters(getParameters(lineAndHeaders));
         return builder.build();
     }
 
     private HttpRequest processPostRequest(String read) {
         HttpRequest.HttpRequestBuilder builder = HttpRequest.builder().method(getMethod(read));
-        builder.parameters(postParameters(read));
-        builder.requestUri(getUri(read));
-        builder.headers(getHeaders(read));
+        String lineAndHeaders = read.split("\r\n\r\n")[0];
+        builder.requestUri(getUri(lineAndHeaders));//1
+        Map<String, String> headers = getHeaders(lineAndHeaders);
+        builder.headers(headers);
+        if (headers.containsKey(HeaderName.CONTENT_TYPE)) {
+            switch (headers.get(HeaderName.CONTENT_TYPE).split(";")[0]) {
+                case HeaderValue.X_WWW_FORM_URLENCODED:
+                    builder.parameters(formUrlencodedParameters(read));
+                    break;
+                case HeaderValue.FORM_DATA:
+                    builder.parameters(formDataParameters(read));
+                    break;
+                case HeaderValue.TEXT_PLAIN:
+                    builder.body(textParameter(read));
+                    break;
+            }
+        }
         return builder.build();
     }
 
     private String getMethod(String read) {
-        return read.split("\n")[0].split(" ")[0];
+        return read.split("\r\n")[0].split(" ")[0];
     }
 
     private String getUri(String read) {
-        return read.split("\n")[0].split(" ")[1].split("\\?")[0];
+        if (read.split("\r\n")[0].split(" ").length > 1) {
+            return read.split("\r\n")[0].split(" ")[1].split("\\?")[0];
+        }
+        return null;
     }
 
     private Map<String, String> getParameters(String read) {
         Map<String, String> paramMap = new HashMap<>();
         try {
-            String[] parameters = read.split("\n")[0].split(" ")[1].split("\\?")[1].split("&");
+            String[] parameters = read.split("\r\n")[0].split(" ")[1].split("\\?")[1].split("&");
             for (String param : parameters) {
                 String[] paramKeyValue = param.split("=");
                 paramMap.put(paramKeyValue[0], paramKeyValue[1]);
@@ -286,12 +323,11 @@ public class JNet {
         }
     }
 
-    private Map<String, String> postParameters(String read) {
+    private Map<String, String> formUrlencodedParameters(String read) {
         Map<String, String> paramMap = new HashMap<>();
         try {
-            String[] requestInfo = read.split("\n");
-            String parameters = requestInfo[requestInfo.length - 1];
-            String[] paramKeyValue = parameters.split("&");
+            String parameterString = read.split("\r\n\r\n")[1];
+            String[] paramKeyValue = parameterString.split("&");
             for (String param : paramKeyValue) {
                 String[] paramKV = param.split("=");
                 paramMap.put(paramKV[0], paramKV[1]);
@@ -302,9 +338,24 @@ public class JNet {
         }
     }
 
+    private Map<String, String> formDataParameters(String read) {
+        Map<String, String> parameters = new HashMap<>();
+        String[] postRequest = read.split("\r\n\r\n");
+        for (int i = 1; i < postRequest.length; i += 2) {
+            String name = postRequest[i].split("\r\n")[1].split("name=")[1].replace("\"", "");
+            String value = postRequest[i + 1].split("\r\n")[0];
+            parameters.put(name, value);
+        }
+        return parameters;
+    }
+
+    private String textParameter(String read) {
+        return read.split("\r\n\r\n")[1];
+    }
+
     private Map<String, String> getHeaders(String read) {
         Map<String, String> headers = new HashMap<>();
-        String[] keyValue = read.split("\n");
+        String[] keyValue = read.split("\r\n");
         for (String kv : keyValue) {
             if (kv.contains(": ")) {
                 String[] headerKV = kv.split(": ");

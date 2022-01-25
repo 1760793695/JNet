@@ -31,6 +31,10 @@ public class HttpResponse {
         this.responseHeader.put(name, value);
     }
 
+    public void addCORSHeader(String name, Object value) {
+        this.responseHeader.put(name, value);
+    }
+
     public void setResponseBody(String responseBody) {
         this.responseBody = responseBody;
     }
@@ -43,11 +47,10 @@ public class HttpResponse {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         responseHeader.forEach((k, v) -> {
-            builder.append(k).append(":").append(v).append("\n");
+            builder.append(k).append(":").append(v).append("\r\n");
         });
-        return responseLine + "\n" + builder.toString() + emptyLine + responseBody;
+        return responseLine + "\r\n" + builder + emptyLine + responseBody;
     }
-
 
 
     public static class HttpResponseBuilder {

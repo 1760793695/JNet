@@ -9,6 +9,7 @@ public class HttpRequest {
     private Map<String, String> parameters;
     private String requestUri;
     private HttpSession httpSession;
+    private String body;
 
     public HttpSession getSession() {
         return this.httpSession;
@@ -42,12 +43,16 @@ public class HttpRequest {
         return parameters.get(parameterName);
     }
 
-    public String uri() {
-        return this.requestUri;
-    }
-
     public Map<String, String> getParameterMap() {
         return this.parameters;
+    }
+
+    public String body() {
+        return this.body;
+    }
+
+    public String uri() {
+        return this.requestUri;
     }
 
     public static class HttpRequestBuilder {
@@ -79,6 +84,11 @@ public class HttpRequest {
 
         public HttpRequestBuilder requestUri(String uri) {
             this.httpRequest.requestUri = uri;
+            return this;
+        }
+
+        public HttpRequestBuilder body(String body) {
+            this.httpRequest.body = body;
             return this;
         }
 
