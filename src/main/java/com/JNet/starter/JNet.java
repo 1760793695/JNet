@@ -340,10 +340,10 @@ public class JNet {
 
     private Map<String, String> formDataParameters(String read) {
         Map<String, String> parameters = new HashMap<>();
-        String[] postRequest = read.split("\r\n\r\n");
-        for (int i = 1; i < postRequest.length; i += 2) {
-            String name = postRequest[i].split("\r\n")[1].split("name=")[1].replace("\"", "");
-            String value = postRequest[i + 1].split("\r\n")[0];
+        String[] postRequest = read.split("Content-Disposition");
+        for (int i = 1; i < postRequest.length; i++) {
+            String name = postRequest[i].split("name=")[1].split("\r\n")[0].replace("\"", "");
+            String value = postRequest[i].split("\r\n\r\n")[1].split("\r\n")[0];
             parameters.put(name, value);
         }
         return parameters;
