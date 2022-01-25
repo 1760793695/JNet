@@ -1,0 +1,21 @@
+JNet:
+  maxReadable: 2048
+  interceptors:
+    - interceptor:
+        path: /favicon.ico
+        class: com.SimpleInterceptor
+  routers:
+    - route:
+        method: GET
+        path: /user/login
+        listenerClass: com.SimpleListener
+  mysql:
+    driver: com.mysql.cj.jdbc.Driver
+    connection:
+      url: jdbc:mysql://localhost:3306/gold?characterEncoding=UTF-8
+      username: root
+      password: 19970519
+  httpSession:
+    timeout: 30
+  httpCookie:
+    timeout: 30

@@ -19,15 +19,6 @@ public class HttpResponse {
         this.cookie = cookie;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder();
-        responseHeader.forEach((k, v) -> {
-            builder.append(k).append(":").append(v).append("\n");
-        });
-        return responseLine + "\n" + builder.toString() + emptyLine + responseBody;
-    }
-
     private HttpResponse() {
         this.responseHeader = new HashMap<>();
     }
@@ -47,6 +38,17 @@ public class HttpResponse {
     public static HttpResponseBuilder builder() {
         return new HttpResponseBuilder(new HttpResponse());
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        responseHeader.forEach((k, v) -> {
+            builder.append(k).append(":").append(v).append("\n");
+        });
+        return responseLine + "\n" + builder.toString() + emptyLine + responseBody;
+    }
+
+
 
     public static class HttpResponseBuilder {
         private HttpResponse httpResponse;
